@@ -6,29 +6,9 @@
 
 #include "message.h"
 #include "socket.h"
+#include "client.h"
+#include "blackjack.h" 
 
-typedef struct card {
-    int suit;   // suit of the card
-    int digit;  // card value (also used to caluclates points)
-    bool picked;    // has the card been picked?
-} card_t;
-
-typedef struct hand {
-    int total;   // total points of the hand, must be <21 to not bust
-    int num_cards;  // Using the Charlie rule, if num == 5, player automatically wins 
-    int ace;    // how many aces does the hand contain
-
-    // might remove later
-    card_t cards[5];
-} hand_t;
-
-typedef struct player {
-    int score; // how many games won
-    int Id; //player ID (aka thread id)
-    int luck; //keeps track of advantages/disadvantages
-    hand_t phand; //the players hand
-    bool stay;  // did the player stay or did they hit? Scheduler checks this, if TRUE, skip players turn
-} player_t;
 
 int play(int socket_fd) {
 
@@ -65,7 +45,7 @@ int play(int socket_fd) {
     }
 
     else {
-      printf("Not a valid input. Remember to use uppercases")
+      printf("Not a valid input. Remember to use uppercases");
     }
 
     // Send a message to the server
@@ -114,6 +94,12 @@ y to include a new card image     * Whether you've won or lost
 
   return 0;
 }
+
+char* recieveCard() {
+  startingHand_t message;
+
+}
+
 
 /**
  * Takes in a suite and the value of the card and edits the respective text file, the output prints the card with the correct values. 

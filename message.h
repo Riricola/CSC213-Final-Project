@@ -1,5 +1,6 @@
 #pragma once
 
+
 #define MAX_MESSAGE_LENGTH 2048
 
 // Send a across a socket with a header that includes the message length. Returns non-zero value if

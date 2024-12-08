@@ -12,6 +12,7 @@ Authors:
 
 #include "message.h"
 #include "socket.h"
+#include "blackjack.h"
 
 #define NUM_SUITS 4
 #define NUM_CARDS 13
@@ -20,31 +21,6 @@ Authors:
 #define SPADE 2
 #define DIAMOND 3
 #define CLUB 4
-
-
-
-typedef struct card {
-    int suit;   // suit of the card
-    int digit;  // card value (also used to caluclates points)
-    bool picked;    // has the card been picked?
-} card_t;
-
-typedef struct hand {
-    int total;   // total points of the hand, must be <21 to not bust
-    int num_cards;  // Using the Charlie rule, if num == 5, player automatically wins 
-    int ace;    // how many aces does the hand contain
-
-    // might remove later
-    card_t cards[5];
-} hand_t;
-
-typedef struct player {
-    int score; // how many games won
-    int Id; //player ID (aka client id)
-    int luck; //keeps track of advantages/disadvantages
-    hand_t phand; //the players hand
-    bool stay;  // did the player stay or did they hit? Scheduler checks this, if TRUE, skip players turn
-} player_t;
 
 
 card_t deck[52];
@@ -87,10 +63,9 @@ void deck_init () {
 /**
     Initalize player. 
  */
- void player_init(player_t player, void* playerId) {
-    int client_socket_fd = * (int*)playerId;
+ void player_init(player_t player, int playerId) {
     player.score = 0;
-    player.Id = client_socket_fd;
+    player.Id = playerId;
     player.luck = 0;
     hand_init(player);
     //Add the player to the array of players
@@ -103,7 +78,7 @@ void deck_init () {
 /**
     Draw cards
  */
-card_t draw_cards(int playerId){
+card_t draw_cards(){
   // Seed the random number generator with a known starting point
   srand(time(NULL)); // 
   int pick = rand() % 52;
@@ -136,69 +111,148 @@ void print_deck(){
     }
 }
 
+void update_hand(int clientId, card_t newcard)
+{
+  for(int i = 0; i < 4; i++)
+  {
+    if(players[i].Id == clientId)
+     {
+      //Give the player another card
+      card_t newcard = draw_cards();
+      //Increment the number of cards that the client has by one
+      players[i].phand.num_cards++;
+      //Check if they drew an ace and increment this value
+      if(newcard.digit == 1)
+      {
+        players[i].phand.ace++;
+      }
+      //Calculate their new hand total
+      int total = players[i].phand.total + newcard.digit;
+      //If they bust, tell them
+      if (total > 21)
+      {
+        char * m = "You have lost this game";
+        int rc = send_message(clientId, m);
+        if (rc == -1)
+        {
+          perror("Failed to send message to client");
+          continue;
+        }
+        close(clientId);
+        return NULL;
+      }
+
+      //Check if they are under 21 and have 5 or more cards: automatic win
+      else {
+        if(players[i].phand.num_cards > 4)
+        {
+        char * m = "You have won this game by the charlie rule";
+        int rc = send_message(clientId, m);
+        if (rc == -1)
+        {
+          perror("Failed to send message to client");
+          continue;
+        }
+        close(clientId);
+        return NULL;
+        }
+      }
+              
+      }
+    }
+}
+
 void * handle_connection(void* arg) {
   int client_socket_fd = * (int*)arg;
   free(arg);
-  
-  typedef struct startingHand{
-    card_t card1;
-    card_t card2;
-  } startingHand_t;
 
+  //Draw two cards for the computer
+  card_t compcard1 = draw_cards();
+  card_t compcard2 = draw_cards();
+
+  //Call the function to update the computer's hand
+  update_hand(0, compcard1);
+  update_hand(0, compcard2);
+  
   startingHand_t message;
 
-  message.card1 = draw_cards(client_socket_fd);
-  message.card2 = draw_cards(client_socket_fd);
+  //Draw two cards for the player
+  card_t card1 = draw_cards();
+  card_t card2 = draw_cards();
+
+  //Call the function to update the players hand
+  update_hand(client_socket_fd, card1);
+  update_hand(client_socket_fd, card2);
+
+  message.card1 = card1;
+  message.card2 = card2;
 
 int nbytes;
 
-// Send a struct to the client containing their starting hand
+// Send a struct to the client containing their starting hand - for the ascii art
 if ((nbytes = write(client_socket_fd, &message, sizeof(startingHand_t)) != sizeof(message)))
 {
   printf("Error writing my message");
 }
-
-  while (1) {
-    // Read a message from the client
-    char* cmessage = receive_message(client_socket_fd);
-    if (cmessage == NULL) {
-      perror("Failed to read message from client");
-      break;
-    }
-    if(strcmp(cmessage, "stay") == 0)
-    {
-        break;
-    }
-    else if (strcmp(cmessage, "hit") == 0)
-    {
-        for(int i = 0; i < 4; i++)
-        {
-            if(players[i].Id == client_socket_fd)
-            {
-              players[i].phand
-            }
-        }
-        draw_cards(client_socket_fd);
+while (1) {
+  char * m = "Please choose to hit or stay and type your response below\n";
+    int rc = send_message(client_socket_fd, m);
+    if (rc == -1) {
+        perror("Failed to send message to client");
         continue;
     }
-    else {
-        char * m = "Please enter a valid result: Either 'hit' or 'stay'";
-        int rc = send_message(client_socket_fd, m);
-        if (rc == -1) {
-            perror("Failed to send message to client");
-            continue;
-        }
+  // Read a message from the client
+  char* cmessage = receive_message(client_socket_fd);
+  if (cmessage == NULL) 
+  {
+    perror("Failed to read message from client");
+    break;
+  }
+  if(strcmp(cmessage, "stay") == 0)
+  {
+    //The player is done, exit the while loop
+  
+    break;
+  }
+  else if (strcmp(cmessage, "hit") == 0)
+  {
+    card_t newcard = draw_cards();
+    update_hand(client_socket_fd, newcard);
+    //The player is still going, rerun the loop
+    continue;
+  }
+  else 
+  {
+    char * m = "Invalid response entered\n";
+    int rc = send_message(client_socket_fd, m);
+    if (rc == -1) {
+        perror("Failed to send message to client");
+        continue;
     }
   }
+  }
 
-
-  close(client_socket_fd);
-  return NULL;
+//At this point the user has chosen to stay or hit and it is the computers turn
+for(int i = 0; i < 4; i++)
+{
+ if(players[i].Id == client_socket_fd)
+  { 
+  int playerTotal = player[i].phand.total;
+  if(players[0].phand.total > player && players[0].phand.total < 21)
+  {
+    
+  }
+  }
 }
 
 
 
 int main(){
+  //Initialize the computer player first
+  player_t computer;
+  int Id = 0;
+  player_init(computer, Id);
+
   // Open a server socket
   unsigned short port = 0;
   int server_socket_fd = server_socket_open(&port);
@@ -225,6 +279,10 @@ int main(){
 
     printf("Client connected!\n");
 
+    //Initialize the client player
+    player_t player1;
+    player_init(player1, client_socket_fd);
+
     pthread_t thread;
 
     int * threadarg = malloc(sizeof(int));
@@ -247,7 +305,7 @@ int main(){
     draw_cards();
     draw_cards();
     draw_cards();
-        draw_cards();
+    draw_cards();
     draw_cards();
     draw_cards();
     print_deck();
