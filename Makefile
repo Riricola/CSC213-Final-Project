@@ -1,22 +1,22 @@
-CC := clang
+CC := gcc
 CFLAGS := -g -Wall -Werror
 
-all: blackjack
+all: blackjack client gameInterface
 
 clean:
 	@echo "Removing build output"
 	@rm -f blackjack blackjack.zip
 
-blackjack: blackjack.c
+blackjack: blackjack.c socket.h message.h message.c
 	$(CC) $(CFLAGS) -o blackjack blackjack.c
 
-server: server.c message.h message.c socket.h
+server: server.c message.h message.c socket.h message.c
 	$(CC) $(CFLAGS) -o server server.c message.c -lpthread
 
-client: client.c message.h message.c
+client: client.c message.h message.c client.h socket.h message.c
 	$(CC) $(CFLAGS) -o client client.c message.c
 
-gameInterface: gameInterface.c
+gameInterface: gameInterface.c 
 	$(CC) $(CFLAGS) -o gameInterface gameInterface.c -lncurses
 
 zip:
