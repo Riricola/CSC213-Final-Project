@@ -63,7 +63,8 @@ void deck_init () {
 /**
     Initalize player. 
  */
- void player_init(player_t player, int playerId) {
+ player_t player_init(int playerId) {
+    player_t player;
     player.score = 0;
     player.Id = playerId;
     player.luck = 0;
@@ -72,6 +73,7 @@ void deck_init () {
     players[playNumber] = player;
     //increment playnumber so that next player gets sent to next spot in array
     playNumber++;
+    return player;
  }         
  
 
@@ -139,7 +141,6 @@ void update_hand(int clientId, card_t newcard)
           continue;
         }
         close(clientId);
-        return NULL;
       }
 
       //Check if they are under 21 and have 5 or more cards: automatic win
@@ -154,7 +155,6 @@ void update_hand(int clientId, card_t newcard)
           continue;
         }
         close(clientId);
-        return NULL;
         }
       }
               
@@ -193,9 +193,10 @@ int nbytes;
 if ((nbytes = write(client_socket_fd, &message, sizeof(startingHand_t)) != sizeof(message)))
 {
   printf("Error writing my message");
+  return NULL;
 }
 while (1) {
-  char * m = "Please choose to hit or stay and type your response below\n";
+  char * m = "Please choose to Hit or Stay and type your response below\n";
     int rc = send_message(client_socket_fd, m);
     if (rc == -1) {
         perror("Failed to send message to client");
@@ -208,13 +209,13 @@ while (1) {
     perror("Failed to read message from client");
     break;
   }
-  if(strcmp(cmessage, "stay") == 0)
+  if(strcmp(cmessage, "Stay") == 0)
   {
     //The player is done, exit the while loop
   
     break;
   }
-  else if (strcmp(cmessage, "hit") == 0)
+  else if (strcmp(cmessage, "Hit") == 0)
   {
     card_t newcard = draw_cards();
     update_hand(client_socket_fd, newcard);
@@ -232,26 +233,68 @@ while (1) {
   }
   }
 
-//At this point the user has chosen to stay or hit and it is the computers turn
+//At this point the user has chosen to stay and it is the computers turn
 for(int i = 0; i < 4; i++)
 {
  if(players[i].Id == client_socket_fd)
   { 
-  int playerTotal = player[i].phand.total;
-  if(players[0].phand.total > player && players[0].phand.total < 21)
+  int playerTotal = players[i].phand.total;
+  //If the computer already has a better hand than the player
+  if(players[0].phand.total > playerTotal && players[0].phand.total < 21)
   {
-    
+    char * m = "You have lost this game\n";
+    int rc = send_message(client_socket_fd, m);
+    if (rc == -1) {
+        perror("Failed to send message to client");
+        continue;
+    }
+    close(client_socket_fd);
+    return NULL;
+  }
+  //Keep having the computer hitting until it wins or goes over 21
+  while (players[0].phand.total < 21 && players[0].phand.total < players[i].phand.total)
+  {
+    card_t c = draw_cards();
+    update_hand(0, c);
+  }
+  //Check if the computer won
+  if(players[0].phand.total < 21)
+  {
+    char * m = "You have lost this game\n";
+    int rc = send_message(client_socket_fd, m);
+    if (rc == -1) {
+        perror("Failed to send message to client");
+        continue;
+    }
+    close(client_socket_fd);
+    return NULL;
+  }
+  else {
+    char * m = "You have won this game\n";
+    int rc = send_message(client_socket_fd, m);
+    if (rc == -1) {
+        perror("Failed to send message to client");
+        continue;
+    }
+    close(client_socket_fd);
+    return NULL;
   }
   }
+   else if(i == 4)
+   {
+      close(client_socket_fd);
+         return NULL;
+   }
+  }
+  return NULL;
 }
-
 
 
 int main(){
   //Initialize the computer player first
-  player_t computer;
-  int Id = 0;
-  player_init(computer, Id);
+  // int Id = 0;
+  //player_t computer = player_init(Id);
+
 
   // Open a server socket
   unsigned short port = 0;
@@ -280,8 +323,7 @@ int main(){
     printf("Client connected!\n");
 
     //Initialize the client player
-    player_t player1;
-    player_init(player1, client_socket_fd);
+    //player_t player1 = player_init(client_socket_fd);
 
     pthread_t thread;
 
@@ -291,25 +333,10 @@ int main(){
     pthread_create(&thread, NULL, handle_connection, threadarg);    
   }
 
-  
-
-  // Close sockets
+//Close sockets
   close(server_socket_fd);
 
   return 0;
-
-
-
-
-    deck_init();
-    draw_cards();
-    draw_cards();
-    draw_cards();
-    draw_cards();
-    draw_cards();
-    draw_cards();
-    print_deck();
-
 } 
 
 

@@ -6,32 +6,63 @@
 
 #include "message.h"
 #include "socket.h"
-#include "client.h"
 #include "blackjack.h" 
+
+void receive_card(char* card)
+{
+  int cardInt = atoi(card);
+  card_t drawnCard;
+  drawnCard.digit = cardInt/4 + 1;
+  drawnCard.suit = cardInt % 4 + 1;
+  char suitStr[20];
+  char digitStr[20];
+  // convert int value to string later for connors print cards cuntion
+  //sprintf(suitStr, %d, drawnCard.suit);
+  //sprintf(digitStr, %d, drawnCard.digit);
+  //editCard(suitStr, digitStr);
+  
+}
 
 
 int play(int socket_fd) {
+  
+  // the 2 receives below will become a function^
+
+  // Receive the first two cards
+  char * card = receive_message(socket_fd);
+      if (card == NULL) {
+        perror("Failed to read card from server");
+        exit(EXIT_FAILURE);
+      } 
+  
+  // and receive the computers cards
 
   while (1) {
     // Read what the user types
+
+    printf("Please enter 'Hit' or 'Stay\n");
     char * userinput;
     size_t n;
     getline(&userinput,&n,stdin);
 
     if (strcmp(userinput, "Hit\n") == 0) {
   
+      //Send over whether the user wants to hit or stay to the server
       int rc = send_message(socket_fd, userinput);
       if (rc == -1) {
         perror("Failed to send message to server");
         exit(EXIT_FAILURE);
       }
       // and then we want to receive a card from server
-      int card = receive_message(socket_fd);
+      char * card = receive_message(socket_fd);
       if (card == NULL) {
         perror("Failed to read card from server");
         exit(EXIT_FAILURE);
-      }
-
+      } 
+      //change to ascii?
+      printf("%s\n", card);
+      // free the card
+      free(card);
       continue; 
     }
 
@@ -71,7 +102,6 @@ int play(int socket_fd) {
         break; // change this to updating loss count +1
     }
 
-    // in this 
     
     // The message received from the server will be:
     /**
@@ -82,9 +112,7 @@ y to include a new card image     * Whether you've won or lost
      * 
      */
 
-    // Print the message
-    printf("Server sent: %s\n", message);
-
+   
     // Free the message
     free(message);
   }
@@ -95,10 +123,6 @@ y to include a new card image     * Whether you've won or lost
   return 0;
 }
 
-char* recieveCard() {
-  startingHand_t message;
-
-}
 
 
 /**
