@@ -8,43 +8,131 @@
 #include "socket.h"
 #include "blackjack.h" 
 
+/**
+ * Takes in a suite and the value of the card and edits the respective text file, the output prints the card with the correct values. 
+ */
+// void editCard(char suite, char cardValue) {
+
+//     FILE* filePtr;
+//     int fileSize;
+
+//     // open correct file regarding the suite
+//     if (suite == 'h') {
+//         filePtr = fopen("ascii_art/ascii-Heart.txt", "r");
+//     }
+//     if (suite == 's') {
+//         filePtr = fopen("ascii_art/ascii-Spade.txt", "r");
+//     }
+//     if (suite == 'c') {
+//         filePtr = fopen("ascii_art/ascii-Club.txt", "r");
+//     }
+//     if (suite == 'd') {
+//         filePtr = fopen("acsii_art/ascii-Diamond.txt", "r");
+//     }
+//     else {
+//         if (filePtr == NULL) {
+//             perror("Error opening file");
+//         }
+//     }
+
+//     // Obtain the file size
+//     fseek(filePtr, 0L, SEEK_END);
+//     fileSize = ftell(filePtr);
+//     rewind(filePtr);
+
+//     char buffer[fileSize+1];
+
+//     // load file into memory
+//     for (int i = 0; i < fileSize; i++) {
+//       buffer[i] = fgetc(filePtr);  
+//     }
+
+//     // change the value of the card in accordance to the vlaue parameter
+//     int j = 0;
+//     while (j < fileSize) {
+//         if (buffer[j] == 'K') {
+//             buffer[j] = cardValue;
+//         }
+//         if (buffer[j] == 'A') {
+//             buffer[j] = cardValue;
+//         }
+//         if (buffer[j] == 'T') {
+//             buffer[j] = cardValue;
+//         }
+//         if (buffer[j] == 'G') {
+//             buffer[j] = cardValue;
+//         }
+//         j++;
+//     }
+//     // prints out the card 
+//     for (int k = 0; k < fileSize; k++) {
+//       printf("%c", buffer[k]); 
+//     }
+
+//     fclose(filePtr);
+// }
+/*
+
+connects to server
+is dealt two cards from the server
+is sent a message telling top card of dealer
+sends hit or stayy to server (0 or 1?)
+after stay, messages sent from computer about what card it picks up
+highest score under 21 wins
+
+*/
+
+
+/*
+Takes in the message from the server and converts it into two strings to be passed
+to the function that will draw the cards with ascii
+*/
 void receive_card(char* card)
 {
   int cardInt = atoi(card);
   card_t drawnCard;
-  drawnCard.digit = cardInt/4 + 1;
-  drawnCard.suit = cardInt % 4 + 1;
+  drawnCard.digit = index_to_digit(cardInt);
+  drawnCard.suit = index_to_suit(cardInt);
   char suitStr[20];
   char digitStr[20];
-  // convert int value to string later for connors print cards cuntion
-  //sprintf(suitStr, %d, drawnCard.suit);
-  //sprintf(digitStr, %d, drawnCard.digit);
+  //convert the int to a string for the ascii art
+  sprintf(suitStr, "%d", drawnCard.suit);
+  sprintf(digitStr, "%d", drawnCard.digit);
   //editCard(suitStr, digitStr);
-  
+}
+
+/*
+Receives a message from the server
+*/
+char* client_receive(int socket_fd)
+{
+   char * card = receive_message(socket_fd);
+      if (card == NULL) {
+        perror("Failed to read card from server");
+        exit(EXIT_FAILURE);
+      } 
+      return card;
 }
 
 
 int play(int socket_fd) {
   
-  // the 2 receives below will become a function^
+  // Receive the computer cards (sent first)
+  receive_card(client_receive(socket_fd));
+  receive_card(client_receive(socket_fd));
 
-  // Receive the first two cards
-  char * card = receive_message(socket_fd);
-      if (card == NULL) {
-        perror("Failed to read card from server");
-        exit(EXIT_FAILURE);
-      } 
-  
-  // and receive the computers cards
+  // and receive the computers cards (sent second)
+  receive_card(client_receive(socket_fd));
+  receive_card(client_receive(socket_fd));
 
   while (1) {
-    // Read what the user types
 
     printf("Please enter 'Hit' or 'Stay\n");
     char * userinput;
     size_t n;
     getline(&userinput,&n,stdin);
 
+    //If the user wants another card
     if (strcmp(userinput, "Hit\n") == 0) {
   
       //Send over whether the user wants to hit or stay to the server
@@ -53,19 +141,14 @@ int play(int socket_fd) {
         perror("Failed to send message to server");
         exit(EXIT_FAILURE);
       }
-      // and then we want to receive a card from server
-      char * card = receive_message(socket_fd);
-      if (card == NULL) {
-        perror("Failed to read card from server");
-        exit(EXIT_FAILURE);
-      } 
-      //change to ascii?
-      printf("%s\n", card);
-      // free the card
-      free(card);
+      // and then we want to receive a card from server and display in ascii
+      receive_card(client_receive(socket_fd));
+
+      //free(card);
       continue; 
     }
 
+    //If the user is done
     else if (strcmp(userinput, "Stay\n") == 0) {
       int rc = send_message(socket_fd, userinput);
       if (rc == -1) {
@@ -122,83 +205,6 @@ y to include a new card image     * Whether you've won or lost
 
   return 0;
 }
-
-
-
-/**
- * Takes in a suite and the value of the card and edits the respective text file, the output prints the card with the correct values. 
- */
-void editCard(char suite, char cardValue) {
-
-    FILE* filePtr;
-    int fileSize;
-
-    // open correct file regarding the suite
-    if (suite == 'h') {
-        filePtr = fopen("ascii_art/ascii-Heart.txt", "r");
-    }
-    if (suite == 's') {
-        filePtr = fopen("ascii_art/ascii-Spade.txt", "r");
-    }
-    if (suite == 'c') {
-        filePtr = fopen("ascii_art/ascii-Club.txt", "r");
-    }
-    if (suite == 'd') {
-        filePtr = fopen("acsii_art/ascii-Diamond.txt", "r");
-    }
-    else {
-        if (filePtr == NULL) {
-            perror("Error opening file");
-        }
-    }
-
-    // Obtain the file size
-    fseek(filePtr, 0L, SEEK_END);
-    fileSize = ftell(filePtr);
-    rewind(filePtr);
-
-    char buffer[fileSize+1];
-
-    // load file into memory
-    for (int i = 0; i < fileSize; i++) {
-      buffer[i] = fgetc(filePtr);  
-    }
-
-    // change the value of the card in accordance to the vlaue parameter
-    int j = 0;
-    while (j < fileSize) {
-        if (buffer[j] == 'K') {
-            buffer[j] = cardValue;
-        }
-        if (buffer[j] == 'A') {
-            buffer[j] = cardValue;
-        }
-        if (buffer[j] == 'T') {
-            buffer[j] = cardValue;
-        }
-        if (buffer[j] == 'G') {
-            buffer[j] = cardValue;
-        }
-        j++;
-    }
-    // prints out the card 
-    for (int k = 0; k < fileSize; k++) {
-      printf("%c", buffer[k]); 
-    }
-
-    fclose(filePtr);
-}
-/*
-
-connects to server
-is dealt two cards from the server
-is sent a message telling top card of dealer
-sends hit or stayy to server (0 or 1?)
-after stay, messages sent from computer about what card it picks up
-highest score under 21 wins
-
-*/
-
 
 int main(int argc, char** argv) {
   if (argc != 3) {

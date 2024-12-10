@@ -32,3 +32,27 @@ typedef struct startingHand{
     card_t card1;
     card_t card2;
   } startingHand_t;
+
+/**
+ Function that takes the index of a card and converts it to its number value
+  */
+  int index_to_digit(int index)
+  {
+    return index/4 + 1;
+  }
+
+  /**
+ Function that takes the index of a card and converts it to its suit
+  */
+   int index_to_suit(int index)
+  {
+     return index % 4 + 1;
+  }
+
+/**
+Function that takes a card and finds its index in array
+ */
+  int card_to_index(card_t card)
+  {
+    return ((card.digit -1) * 4) + (card.suit - 1);
+  }

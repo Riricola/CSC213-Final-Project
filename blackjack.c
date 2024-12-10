@@ -75,8 +75,35 @@ void deck_init () {
     playNumber++;
     return player;
  }         
- 
 
+/*
+Send a card to the client
+*/
+void client_card(card_t card, int clientId)
+{
+   char m[20];
+sprintf(m, "%d", card_to_index(card));
+    int rc = send_message(clientId, m);
+    if (rc == -1) {
+        perror("Failed to send message to client");
+        //continue;
+    }
+
+}
+
+/*
+Send a message to the client
+*/
+void client_message(char* m, int clientId)
+{
+    int rc = send_message(clientId, m);
+    if (rc == -1) {
+        perror("Failed to send message to client");
+        //continue;
+    }
+
+}
+  
 /**
     Draw cards
  */
@@ -90,8 +117,8 @@ card_t draw_cards(){
     
     deck[pick].picked = true;
     card_t drawnCard;
-    drawnCard.digit = pick/4 + 1;
-    drawnCard.suit = pick % 4 + 1;
+    drawnCard.digit = index_to_digit(pick);
+    drawnCard.suit = index_to_suit(pick);
   // after drawing a card, print it so we can see if it is random each time
   printf("%d \n", deck[pick].digit);
 
@@ -119,8 +146,6 @@ void update_hand(int clientId, card_t newcard)
   {
     if(players[i].Id == clientId)
      {
-      //Give the player another card
-      card_t newcard = draw_cards();
       //Increment the number of cards that the client has by one
       players[i].phand.num_cards++;
       //Check if they drew an ace and increment this value
@@ -174,7 +199,9 @@ void * handle_connection(void* arg) {
   update_hand(0, compcard1);
   update_hand(0, compcard2);
   
-  startingHand_t message;
+  //Send the computer's cards over to the client - for ascii art
+  client_card(compcard1, client_socket_fd);
+  client_card(compcard2, client_socket_fd);
 
   //Draw two cards for the player
   card_t card1 = draw_cards();
@@ -184,24 +211,15 @@ void * handle_connection(void* arg) {
   update_hand(client_socket_fd, card1);
   update_hand(client_socket_fd, card2);
 
-  message.card1 = card1;
-  message.card2 = card2;
+  //Send the player's cards over to the client - for ascii art
+  client_card(card1, client_socket_fd);
+  client_card(card2, client_socket_fd);
 
-int nbytes;
 
-// Send a struct to the client containing their starting hand - for the ascii art
-if ((nbytes = write(client_socket_fd, &message, sizeof(startingHand_t)) != sizeof(message)))
-{
-  printf("Error writing my message");
-  return NULL;
-}
 while (1) {
   char * m = "Please choose to Hit or Stay and type your response below\n";
-    int rc = send_message(client_socket_fd, m);
-    if (rc == -1) {
-        perror("Failed to send message to client");
-        continue;
-    }
+  client_message(m, client_socket_fd);
+
   // Read a message from the client
   char* cmessage = receive_message(client_socket_fd);
   if (cmessage == NULL) 
@@ -225,11 +243,7 @@ while (1) {
   else 
   {
     char * m = "Invalid response entered\n";
-    int rc = send_message(client_socket_fd, m);
-    if (rc == -1) {
-        perror("Failed to send message to client");
-        continue;
-    }
+    client_message(m, client_socket_fd);
   }
   }
 
@@ -243,11 +257,7 @@ for(int i = 0; i < 4; i++)
   if(players[0].phand.total > playerTotal && players[0].phand.total < 21)
   {
     char * m = "You have lost this game\n";
-    int rc = send_message(client_socket_fd, m);
-    if (rc == -1) {
-        perror("Failed to send message to client");
-        continue;
-    }
+    client_message(m, client_socket_fd);
     close(client_socket_fd);
     return NULL;
   }
@@ -261,21 +271,13 @@ for(int i = 0; i < 4; i++)
   if(players[0].phand.total < 21)
   {
     char * m = "You have lost this game\n";
-    int rc = send_message(client_socket_fd, m);
-    if (rc == -1) {
-        perror("Failed to send message to client");
-        continue;
-    }
+    client_message(m, client_socket_fd);
     close(client_socket_fd);
     return NULL;
   }
   else {
     char * m = "You have won this game\n";
-    int rc = send_message(client_socket_fd, m);
-    if (rc == -1) {
-        perror("Failed to send message to client");
-        continue;
-    }
+    client_message(m, client_socket_fd);
     close(client_socket_fd);
     return NULL;
   }
