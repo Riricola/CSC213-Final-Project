@@ -8,25 +8,26 @@
 #include "socket.h"
 #include "blackjack.h" 
 
+
 /**
  * Takes in a suite and the value of the card and edits the respective text file, the output prints the card with the correct values. 
  */
-// void editCard(char suite, char cardValue) {
+// void editCard(int suite, char cardValue) {
 
 //     FILE* filePtr;
 //     int fileSize;
 
 //     // open correct file regarding the suite
-//     if (suite == 'h') {
+//     if (suite == 1) {
 //         filePtr = fopen("ascii_art/ascii-Heart.txt", "r");
 //     }
-//     if (suite == 's') {
+//     if (suite == 2) {
 //         filePtr = fopen("ascii_art/ascii-Spade.txt", "r");
 //     }
-//     if (suite == 'c') {
+//     if (suite == 4) {
 //         filePtr = fopen("ascii_art/ascii-Club.txt", "r");
 //     }
-//     if (suite == 'd') {
+//     if (suite == 3) {
 //         filePtr = fopen("acsii_art/ascii-Diamond.txt", "r");
 //     }
 //     else {
@@ -82,7 +83,6 @@ highest score under 21 wins
 
 */
 
-
 /*
 Takes in the message from the server and converts it into two strings to be passed
 to the function that will draw the cards with ascii
@@ -98,6 +98,8 @@ void receive_card(char* card)
   //convert the int to a string for the ascii art
   sprintf(suitStr, "%d", drawnCard.suit);
   sprintf(digitStr, "%d", drawnCard.digit);
+
+  printf("%d \n", cardInt);
   //editCard(suitStr, digitStr);
 }
 
@@ -116,52 +118,57 @@ char* client_receive(int socket_fd)
 
 
 int play(int socket_fd) {
-  
-  // Receive the computer cards (sent first)
+
+// Receive the computer cards (sent first)
   receive_card(client_receive(socket_fd));
   receive_card(client_receive(socket_fd));
 
   // and receive the computers cards (sent second)
   receive_card(client_receive(socket_fd));
   receive_card(client_receive(socket_fd));
-
   while (1) {
 
-    printf("Please enter 'Hit' or 'Stay\n");
+    // receive an initial "hit or stay" message from the comp
+    char* m = client_receive(socket_fd);
+    printf("%s", m);
+
+    // read in client's choice
     char * userinput;
     size_t n;
     getline(&userinput,&n,stdin);
-
-    //If the user wants another card
+    printf("User input: %s", userinput);
+  //If the user wants another card
     if (strcmp(userinput, "Hit\n") == 0) {
-  
-      //Send over whether the user wants to hit or stay to the server
+  //Send over whether the user wants to hit or stay to the server
       int rc = send_message(socket_fd, userinput);
       if (rc == -1) {
         perror("Failed to send message to server");
         exit(EXIT_FAILURE);
       }
-      // and then we want to receive a card from server and display in ascii
-      receive_card(client_receive(socket_fd));
+      // and then we want to receive a card from server
+      char* m = client_receive(socket_fd);
+      printf("%s", m);
+       // and then we want to receive a card from server and display in ascii
+      //receive_card(client_receive(socket_fd));
 
       //free(card);
+
       continue; 
     }
-
-    //If the user is done
+//If the user is done
     else if (strcmp(userinput, "Stay\n") == 0) {
       int rc = send_message(socket_fd, userinput);
       if (rc == -1) {
         perror("Failed to send message to server");
         exit(EXIT_FAILURE);
       }
-      break;
+      continue;
     }
 
     else {
       printf("Not a valid input. Remember to use uppercases");
     }
-
+  
     // Send a message to the server
 
     /** Messages to SEND:
@@ -173,17 +180,15 @@ int play(int socket_fd) {
      */
 
     // Read a message from the server
-    char* message = receive_message(socket_fd);
-    if (message == NULL) {
-      perror("Failed to read message from server");
-      exit(EXIT_FAILURE);
-    }
+    // char* m = client_receive(socket_fd);
+    //   printf("%s", m);
 
-    if(strcmp(message, "You Won! :)") == 0){
-        break; // change this to updating count of wins +1
-    } else if (strcmp(message, "You Lost... :(") == 0){
-        break; // change this to updating loss count +1
-    }
+
+    // if(strcmp(message, "You Won! :)") == 0){
+    //     break; // change this to updating count of wins +1
+    // } else if (strcmp(message, "You Lost... :(") == 0){
+    //     break; // change this to updating loss count +1
+    // }
 
     
     // The message received from the server will be:
@@ -195,7 +200,6 @@ y to include a new card image     * Whether you've won or lost
      * 
      */
 
-   
     // Free the message
     free(message);
   }
@@ -205,6 +209,8 @@ y to include a new card image     * Whether you've won or lost
 
   return 0;
 }
+
+
 
 int main(int argc, char** argv) {
   if (argc != 3) {

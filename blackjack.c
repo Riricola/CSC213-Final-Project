@@ -26,7 +26,7 @@ Authors:
 card_t deck[52];
 
 //Array that holds the players
-player_t players[4];
+player_t players[5];
 
 //Global that makes array spot different each time
 //Might have to put a lock around this?
@@ -57,7 +57,6 @@ void deck_init () {
     player.phand.total = 0;
     player.phand.num_cards = 0;
     player.phand.ace = 0;
-    
   }
 
 /**
@@ -112,7 +111,7 @@ card_t draw_cards(){
   srand(time(NULL)); // 
   int pick = rand() % 52;
     while (deck[pick].picked == true) {
-        pick = (pick + 1) % 52;
+        pick = rand() % 52;
     } // while
     
     deck[pick].picked = true;
@@ -227,18 +226,27 @@ while (1) {
     perror("Failed to read message from client");
     break;
   }
-  if(strcmp(cmessage, "Stay") == 0)
+  if(strcmp(cmessage, "Stay\n") == 0)
   {
     //The player is done, exit the while loop
-  
+    printf("start of stay");
     break;
   }
-  else if (strcmp(cmessage, "Hit") == 0)
+  else if (strcmp(cmessage, "Hit\n") == 0)
   {
-    card_t newcard = draw_cards();
-    update_hand(client_socket_fd, newcard);
-    //The player is still going, rerun the loop
-    continue;
+    printf("Got to hit area of while loop");
+    // update hand and prompt user for Hit or Stay UNTIL user says stay
+    //while(strcmp(cmessage, "Stay") != 0){
+      // update hand
+      card_t newcard = draw_cards();
+      printf("card drawn: %d\n", newcard);
+      update_hand(client_socket_fd, newcard);
+      client_card(newcard, client_socket_fd);
+      continue;
+      //Get another message
+      //cmessage = receive_message(client_socket_fd);
+    //}
+    
   }
   else 
   {
@@ -246,15 +254,15 @@ while (1) {
     client_message(m, client_socket_fd);
   }
   }
-
+printf("end of while");
 //At this point the user has chosen to stay and it is the computers turn
-for(int i = 0; i < 4; i++)
+for(int i = 1; i <= 4; i++)
 {
  if(players[i].Id == client_socket_fd)
   { 
   int playerTotal = players[i].phand.total;
   //If the computer already has a better hand than the player
-  if(players[0].phand.total > playerTotal && players[0].phand.total < 21)
+  if(players[0].phand.total > playerTotal && players[0].phand.total <= 21)
   {
     char * m = "You have lost this game\n";
     client_message(m, client_socket_fd);
@@ -268,7 +276,7 @@ for(int i = 0; i < 4; i++)
     update_hand(0, c);
   }
   //Check if the computer won
-  if(players[0].phand.total < 21)
+  if(players[0].phand.total <= 21)
   {
     char * m = "You have lost this game\n";
     client_message(m, client_socket_fd);

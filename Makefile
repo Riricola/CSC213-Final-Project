@@ -1,23 +1,17 @@
-CC := clang
+CC := gcc
 CFLAGS := -g -Wall 
 
-all: blackjack client gameInterface
+all: blackjack client
 
 clean:
 	@echo "Removing build output"
 	@rm -f blackjack blackjack.zip
 
-blackjack: blackjack.c socket.h message.h message.c blackjack.h
-	$(CC) $(CFLAGS) -o blackjack blackjack.c message.c
+blackjack: blackjack.c socket.h message.h blackjack.h
+	$(CC) $(CFLAGS) -o blackjack blackjack.c
 
-server: server.c message.h message.c socket.h message.c
-	$(CC) $(CFLAGS) -o server server.c message.c -lpthread
-
-client: client.c message.h message.c socket.h message.c blackjack.h
-	$(CC) $(CFLAGS) -o client client.c message.c
-
-gameInterface: gameInterface.c 
-	$(CC) $(CFLAGS) -o gameInterface gameInterface.c -lncurses
+client: client.c message.h socket.h blackjack.h
+	$(CC) $(CFLAGS) -o client client.c
 
 zip:
 	@echo "Generating blackjack.zip file to submit to Gradescope..."
