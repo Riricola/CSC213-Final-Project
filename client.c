@@ -116,7 +116,6 @@ char* client_receive(int socket_fd)
       return card;
 }
 
-
 int play(int socket_fd) {
 
 // Receive the computer cards (sent first)
@@ -142,42 +141,46 @@ int play(int socket_fd) {
   //Send over whether the user wants to hit or stay to the server
       int rc = send_message(socket_fd, userinput);
       if (rc == -1) {
-        perror("Failed to send message to server");
+        perror("Failed to send 'Hit' to server");
         exit(EXIT_FAILURE);
       }
       // and then we want to receive a card from server
-      char* m = client_receive(socket_fd);
-      printf("%s", m);
+      //char* m = client_receive(socket_fd);
+      //printf("%s", m);
        // and then we want to receive a card from server and display in ascii
-      //receive_card(client_receive(socket_fd));
+      receive_card(client_receive(socket_fd));
 
       //free(card);
 
       continue; 
     }
-//If the user is done
+    //If the user is done
     else if (strcmp(userinput, "Stay\n") == 0) {
+      printf("Got to stay part of client");
       int rc = send_message(socket_fd, userinput);
       if (rc == -1) {
-        perror("Failed to send message to server");
+        perror("Failed to send 'STAY' to server");
+        exit(EXIT_FAILURE);
+      }
+
+      char* final = client_receive(socket_fd);
+      printf("%s", final);
+      break;
+    }
+    else {
+      printf("invalid input \n");
+      int rc = send_message(socket_fd, userinput);
+      if (rc == -1) {
+        perror("Failed to send invalid input to server");
         exit(EXIT_FAILURE);
       }
       continue;
     }
-
-    else {
-      printf("Not a valid input. Remember to use uppercases");
-    }
-  
-    // Send a message to the server
-
-    /** Messages to SEND:
-     * 
-     * Draw card -> strcmp(userinput, "draw\n") == 0
-     * Stay (relinquish control) -> strcmp(userinput, "stay\n") == 0
-     * total card count ( this might just be kept track of by server)
-     * 
-     */
+    //  * Draw card -> strcmp(userinput, "draw\n") == 0
+    //  * Stay (relinquish control) -> strcmp(userinput, "stay\n") == 0
+    //  * total card count ( this might just be kept track of by server)
+    //  * 
+    //  */
 
     // Read a message from the server
     // char* m = client_receive(socket_fd);
@@ -201,8 +204,13 @@ y to include a new card image     * Whether you've won or lost
      */
 
     // Free the message
-    free(message);
-  }
+    //free(message);
+
+    
+  } // while  
+  
+  // typing "Stay" brings you out the while loop, now you're waiting for the computer/server to play their turn
+  
 
   // Close socket
   close(socket_fd);

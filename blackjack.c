@@ -28,10 +28,6 @@ card_t deck[52];
 //Array that holds the players
 player_t players[5];
 
-//Global that makes array spot different each time
-//Might have to put a lock around this?
-int playNumber;
-
 
 /**
     Initialize the deck. Puts the cards in order from ace to king, with
@@ -62,14 +58,14 @@ void deck_init () {
 /**
     Initalize player. 
  */
- player_t player_init(int playerId) {
+ player_t player_init(int socket, int playerNum) {
     player_t player;
     player.score = 0;
-    player.Id = playerId;
+    player.Id = socket;
     player.luck = 0;
     hand_init(player);
     //Add the player to the array of players
-    players[playNumber] = player;
+    players[playerNum] = player;
     //increment playnumber so that next player gets sent to next spot in array
     playNumber++;
     return player;
@@ -81,10 +77,10 @@ Send a card to the client
 void client_card(card_t card, int clientId)
 {
    char m[20];
-sprintf(m, "%d", card_to_index(card));
+    sprintf(m, "%d", card_to_index(card));
     int rc = send_message(clientId, m);
     if (rc == -1) {
-        perror("Failed to send message to client");
+        perror("Failed to send card to client");
         //continue;
     }
 
@@ -221,25 +217,36 @@ while (1) {
 
   // Read a message from the client
   char* cmessage = receive_message(client_socket_fd);
+  /*
   if (cmessage == NULL) 
   {
     perror("Failed to read message from client");
     break;
   }
+  */
+  
   if(strcmp(cmessage, "Stay\n") == 0)
   {
     //The player is done, exit the while loop
-    printf("start of stay");
+    printf("start of stay");    /// <---- WE GET HERE BUT IT DOESNT PRINT
+
+    // hit or stay, then send the total cards to client
+    //At this point the user has chosen to stay and it is the computers turn
+    
+
+    m = "suprise shawtyyyy \n";
+    client_message(m, client_socket_fd);
+
     break;
   }
   else if (strcmp(cmessage, "Hit\n") == 0)
   {
     printf("Got to hit area of while loop");
-    // update hand and prompt user for Hit or Stay UNTIL user says stay
-    //while(strcmp(cmessage, "Stay") != 0){
+      // update hand and prompt user for Hit or Stay UNTIL user says stay
+      // while(strcmp(cmessage, "Stay") != 0){
       // update hand
       card_t newcard = draw_cards();
-      printf("card drawn: %d\n", newcard);
+      printf("card drawn: %d\n", newcard.digit);
       update_hand(client_socket_fd, newcard);
       client_card(newcard, client_socket_fd);
       continue;
@@ -247,13 +254,17 @@ while (1) {
       //cmessage = receive_message(client_socket_fd);
     //}
     
-  }
+  } // else if 
   else 
   {
     char * m = "Invalid response entered\n";
     client_message(m, client_socket_fd);
-  }
-  }
+    continue;
+  } // else
+} // while
+
+
+
 printf("end of while");
 //At this point the user has chosen to stay and it is the computers turn
 for(int i = 1; i <= 4; i++)
@@ -294,7 +305,7 @@ for(int i = 1; i <= 4; i++)
    {
       close(client_socket_fd);
          return NULL;
-   }
+   } 
   }
   return NULL;
 }
@@ -302,8 +313,8 @@ for(int i = 1; i <= 4; i++)
 
 int main(){
   //Initialize the computer player first
-  // int Id = 0;
-  //player_t computer = player_init(Id);
+  int Id = 0;
+  player_t computer = player_init(Id);
 
 
   // Open a server socket
@@ -320,6 +331,7 @@ int main(){
     exit(EXIT_FAILURE);
   }
 
+  int playNumber = 0;
   while(1) {
     printf("Server listening on port %u\n", port);
   
@@ -333,7 +345,8 @@ int main(){
     printf("Client connected!\n");
 
     //Initialize the client player
-    //player_t player1 = player_init(client_socket_fd);
+    player_t player1 = player_init(client_socket_fd, playNumber);
+    playNumber++;
 
     pthread_t thread;
 
