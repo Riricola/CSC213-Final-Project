@@ -99,7 +99,7 @@ void receive_card(char* card)
   sprintf(suitStr, "%d", drawnCard.suit);
   sprintf(digitStr, "%d", drawnCard.digit);
 
-  printf("%d \n", cardInt);
+  printf("%d \n", index_to_digit(cardInt));
   //editCard(suitStr, digitStr);
 }
 
@@ -157,6 +157,7 @@ int play(int socket_fd) {
     //If the user is done
     else if (strcmp(userinput, "Stay\n") == 0) {
       printf("Got to stay part of client");
+      //Tell the server we are staying
       int rc = send_message(socket_fd, userinput);
       if (rc == -1) {
         perror("Failed to send 'STAY' to server");
@@ -168,7 +169,7 @@ int play(int socket_fd) {
       break;
     }
     else {
-      printf("invalid input \n");
+      //printf("invalid input \n");
       int rc = send_message(socket_fd, userinput);
       if (rc == -1) {
         perror("Failed to send invalid input to server");
