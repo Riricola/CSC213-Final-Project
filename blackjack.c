@@ -68,7 +68,7 @@ void deck_init () {
     player.Id = socket;
     player.luck = 0;
     player.phand = hand_init();
-    printf("player %d hand total on initialize : %d\n", player.Id, player.phand.total);
+    //printf("player %d hand total on initialize : %d\n", player.Id, player.phand.total);
 
     //Add the player to the array of players
     //players[playerNum] = player;
@@ -105,8 +105,31 @@ void client_message(char* m, int clientId)
         //continue;
     }
 
-}
+} // client message
   
+/*
+Send a message to the client
+*/
+void card_message(card_t card, int clientId, player_t player)
+{
+   char m[20];
+    sprintf(m, "%d", card_to_index(card));
+    int rc = send_message(clientId, m);
+    if (rc == -1) {
+        perror("Failed to send card to client");
+        //continue;
+    }
+       char total[20];
+    sprintf(total, "%d", player.phand.total);
+    int rb = send_message(clientId, total);
+    if (rb == -1) {
+        perror("Failed to send message to client");
+        //continue;
+    }
+
+
+} // client message
+
 /**
     Draw cards
  */
@@ -125,12 +148,8 @@ card_t draw_cards(){
   // after drawing a card, print it so we can see if it is random each time
   printf("%d \n", deck[pick].digit);
 
-  // add the card to the player's hand total
-  //player.phand.total += deck[pick].digit;
-  //card[] card_hand = player.phand.cards
-  // 
   return drawnCard;
-}
+} // draw cards
 
 void print_deck(){
     for(int i = 0; i < 52; i++){
@@ -141,9 +160,9 @@ void print_deck(){
         }
     
     }
-}
+} // print deck
 
-void update_hand(player_t player, card_t newcard)
+void update_hand(player_t* player, card_t newcard)
 {
   /**/
   //for(int i = 0; i < 4; i++)
@@ -151,50 +170,73 @@ void update_hand(player_t player, card_t newcard)
     //if(players[i].Id == clientId)
      //{
       //Increment the number of cards that the client has by one
-      player.phand.num_cards++;
+      player->phand.num_cards++;
       //Check if they drew an ace and increment this value
       if(newcard.digit == 1)
       {
-        player.phand.ace++;
+        player->phand.ace++;
       }
-      //Calculate their new hand total
-      printf("hand: %d, digit %d \n", player.phand.total, newcard.digit);
+      
+      player->phand.total += newcard.digit;
+      //printf("player %d total = %d \n", player->Id, player->phand.total);
 
-      player.phand.total += newcard.digit;
-      printf("player %d total = %d \n", player.Id, player.phand.total);
-
-      //Add the new card to the players hand
-      //player.phand.total = total;
 
       //If they bust, tell them
-      if (player.phand.total > 21)
+      if (player->phand.total > 21)
       {
-        char * m = "You have lost this game";
-        int rc = send_message(player.Id, m);
+        char * m = "You have lost this game\n";
+        int rc = send_message(player->Id, m);
         if (rc == -1)
         {
           perror("Failed to send message to client");
           //continue;
         }
-        close(player.Id);
+        return;
+        //close(player->Id);
+      } else if(player->phand.total == 21){
+        char * m = "You scored 21! 'STAY' for the Computer to play their turn. \n";
+        int rc = send_message(player->Id, m);
+        if (rc == -1)
+        {
+          perror("Failed to send 'wait for computer' message to client");
+          //continue;
+        }
       }
 
       //Check if they are under 21 and have 5 or more cards: automatic win
-      else {
-        if(player.phand.num_cards > 4)
+      else if (player->phand.num_cards > 4)
         {
-        char * m = "You have won this game by the charlie rule";
-        int rc = send_message(player.Id, m);
+        char * m = "You have won this game by the charlie rule. \n";
+        int rc = send_message(player->Id, m);
         if (rc == -1)
         {
-          perror("Failed to send message to client");
+          perror("Failed to send 'you won by charlie rule' to client");
           //continue;
         }
-        close(player.Id);
+        //close(player->Id);
         }
-      }
+        // else if(player->phand.num_cards >= 2){
+        //   char message[20];
+        //   sprintf(message, "%d", player->phand.total);
+        // int rc = send_message(player->Id, message);
+        // if (rc == -1)
+        // {
+        //   perror("Failed to send total");
+        //   //continue;
+        // }
+        // }
+        else {
+          char * m = "\n";
+        int rc = send_message(player->Id, m);
+        if (rc == -1)
+        {
+          perror("Failed to send");
+          //continue;
+        }
+        }
+      }     // else
               
-      }
+       // update hand
     //}
 //}
 
@@ -205,13 +247,11 @@ void * handle_connection(void* arg) {
   //Initialize the computer player first
   int Id = 0;
   player_t computer = player_init(Id);
-  //hand_init(computer);
-  printf("starting hand total 1: %d\n", computer.phand.total);
+  //printf("starting hand total 1: %d\n", computer.phand.total);
 
   //Initialize the client player
   player_t player1 = player_init(client_socket_fd);
-  //hand_init(player1);
-  printf("starting hand total 2: %d\n", player1.phand.total);
+  //printf("starting hand total 2: %d\n", player1.phand.total);
 
   //Draw two cards for the computer
   card_t compcard1 = draw_cards();
@@ -221,16 +261,13 @@ void * handle_connection(void* arg) {
   card_t card1 = draw_cards();
   card_t card2 = draw_cards();
 
-  printf("check");
-
-
   //Call the function to update the computer's hand
-  update_hand(computer, compcard1);
-  update_hand(computer, compcard2);
+  update_hand(&computer, compcard1);
+  update_hand(&computer, compcard2);
   
     //Call the function to update the players hand
-  update_hand(player1, card1);
-  update_hand(player1, card2);
+  update_hand(&player1, card1);
+  update_hand(&player1, card2);
 
   //Send the computer's cards over to the client - for ascii art
   client_card(compcard1, client_socket_fd);
@@ -238,9 +275,7 @@ void * handle_connection(void* arg) {
 
   //Send the player's cards over to the client - for ascii art
   client_card(card1, client_socket_fd);
-
-   printf("check2");
-  client_card(card2, client_socket_fd);
+  card_message(card2, client_socket_fd, player1);
 
 
 while (1) {
@@ -260,16 +295,13 @@ while (1) {
   if(strcmp(cmessage, "Stay\n") == 0)
   {
     //The player is done, exit the while loop
-    printf("start of stay");    /// <---- WE GET HERE BUT IT DOESNT PRINT
+    //printf("start of stay");    /// <---- WE GET HERE BUT IT DOESNT PRINT
 
     // hit or stay, then send the total cards to client
     //At this point the user has chosen to stay and it is the computers turn
-    
 
     //m = "suprise shawtyyyy \n";
     //client_message(m, client_socket_fd);
-
-    
 
     break;
   }
@@ -279,8 +311,9 @@ while (1) {
       // update hand
       card_t newcard = draw_cards();
       printf("card drawn: %d\n", newcard.digit);
-      update_hand(player1, newcard);
-      client_card(newcard, client_socket_fd);
+      //update_hand(&player1, newcard);
+      card_message(newcard, client_socket_fd, player1);
+      update_hand(&player1, newcard);
       continue;
     
   } // else if 
@@ -289,21 +322,18 @@ while (1) {
     //char * m = "Invalid response entered\n";
     //client_message(m, client_socket_fd);
     continue;
-  } // else
+  }
+   // else
 } // while
 
 
 
-printf("end of while");
+//printf("end of while");
 //At this point the user has chosen to stay and it is the computers turn
-/*
-for(int i = 1; i <= 4; i++)
-{
- if(players[i].Id == client_socket_fd)
-  { 
-  int playerTotal = players[i].phand.total;
+   printf("computer total: %d", computer.phand.total);
+  int playerTotal = player1.phand.total;
   //If the computer already has a better hand than the player
-  if(players[0].phand.total > playerTotal && players[0].phand.total <= 21)
+  if(computer.phand.total > playerTotal && computer.phand.total <= 21)
   {
     char * m = "You have lost this game\n";
     client_message(m, client_socket_fd);
@@ -311,13 +341,14 @@ for(int i = 1; i <= 4; i++)
     return NULL;
   }
   //Keep having the computer hitting until it wins or goes over 21
-  while (players[0].phand.total < 21 && players[0].phand.total < players[i].phand.total)
+  while (computer.phand.total < 21 && computer.phand.total < player1.phand.total)
   {
     card_t c = draw_cards();
-    update_hand(0, c);
+    printf("computer drew: %d", c.digit);
+    update_hand(&computer, c);
   }
   //Check if the computer won
-  if(players[0].phand.total <= 21)
+  if(computer.phand.total <= 21)
   {
     char * m = "You have lost this game\n";
     client_message(m, client_socket_fd);
@@ -330,16 +361,12 @@ for(int i = 1; i <= 4; i++)
     close(client_socket_fd);
     return NULL;
   }
-  }
-   else if(i == 4)
-   {
-      close(client_socket_fd);
-         return NULL;
-   } 
-  }
-  */
+  
+  
+  
   return NULL;
 }
+
 
 
 int main(){

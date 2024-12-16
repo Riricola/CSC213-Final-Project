@@ -99,7 +99,7 @@ void receive_card(char* card)
   sprintf(suitStr, "%d", drawnCard.suit);
   sprintf(digitStr, "%d", drawnCard.digit);
 
-  printf("%d \n", index_to_digit(cardInt));
+  //printf("%d \n", index_to_digit(cardInt));
   //editCard(suitStr, digitStr);
 }
 
@@ -107,7 +107,7 @@ void receive_card(char* card)
 Receives a message from the server
 */
 char* client_receive(int socket_fd)
-{
+{ 
    char * card = receive_message(socket_fd);
       if (card == NULL) {
         perror("Failed to read card from server");
@@ -116,26 +116,41 @@ char* client_receive(int socket_fd)
       return card;
 }
 
+char* client_receive_both(int socket_fd)
+{ 
+   char * card = receive_message(socket_fd);
+      if (card == NULL) {
+        perror("Failed to read card from server");
+        exit(EXIT_FAILURE);
+      } 
+      char * m = receive_message(socket_fd);
+    printf("Total = %s\n", m);
+    // priin the received total
+
+      return card;
+}
+
 int play(int socket_fd) {
 
-// Receive the computer cards (sent first)
-  receive_card(client_receive(socket_fd));
-  receive_card(client_receive(socket_fd));
-
-  // and receive the computers cards (sent second)
-  receive_card(client_receive(socket_fd));
-  receive_card(client_receive(socket_fd));
-  while (1) {
-
+// Receive the computer cards (sent first) //Read a message from the server
+    receive_card(client_receive(socket_fd));
+    client_receive(socket_fd);
+    receive_card(client_receive(socket_fd));
+    client_receive(socket_fd);
+    receive_card(client_receive(socket_fd));
+    client_receive(socket_fd);
+    receive_card(client_receive_both(socket_fd));
+    client_receive(socket_fd);
+    
+     while(1){
     // receive an initial "hit or stay" message from the comp
     char* m = client_receive(socket_fd);
-    printf("%s", m);
+    printf("check%s", m);
 
     // read in client's choice
     char * userinput;
     size_t n;
     getline(&userinput,&n,stdin);
-    printf("User input: %s", userinput);
   //If the user wants another card
     if (strcmp(userinput, "Hit\n") == 0) {
   //Send over whether the user wants to hit or stay to the server
@@ -148,7 +163,13 @@ int play(int socket_fd) {
       //char* m = client_receive(socket_fd);
       //printf("%s", m);
        // and then we want to receive a card from server and display in ascii
-      receive_card(client_receive(socket_fd));
+
+      receive_card(client_receive_both(socket_fd));
+
+      char* update = receive_message(socket_fd);
+      printf("%s", update);
+
+
 
       //free(card);
 
@@ -156,7 +177,7 @@ int play(int socket_fd) {
     }
     //If the user is done
     else if (strcmp(userinput, "Stay\n") == 0) {
-      printf("Got to stay part of client");
+      //printf("Got to stay part of client");
       //Tell the server we are staying
       int rc = send_message(socket_fd, userinput);
       if (rc == -1) {
@@ -164,8 +185,8 @@ int play(int socket_fd) {
         exit(EXIT_FAILURE);
       }
 
-      char* final = client_receive(socket_fd);
-      printf("%s", final);
+      // char* final = client_receive(socket_fd);
+      // printf("%s", final);
       break;
     }
     else {
@@ -183,16 +204,14 @@ int play(int socket_fd) {
     //  * 
     //  */
 
-    // Read a message from the server
-    // char* m = client_receive(socket_fd);
-    //   printf("%s", m);
-
-
-    // if(strcmp(message, "You Won! :)") == 0){
-    //     break; // change this to updating count of wins +1
-    // } else if (strcmp(message, "You Lost... :(") == 0){
-    //     break; // change this to updating loss count +1
-    // }
+   
+  /*
+    if(strcmp(final, "You Won! :)") == 0){
+        break; // change this to updating count of wins +1
+    } else if (strcmp(final, "You have lost this game\n") == 0){
+        break; // change this to updating loss count +1
+    }
+    */
 
     
     // The message received from the server will be:
@@ -211,10 +230,13 @@ y to include a new card image     * Whether you've won or lost
   } // while  
   
   // typing "Stay" brings you out the while loop, now you're waiting for the computer/server to play their turn
-  
+   //Read a message from the server
+    char* final = client_receive(socket_fd);
+      printf("%s\n", final);
+
 
   // Close socket
-  close(socket_fd);
+  //close(socket_fd);
 
   return 0;
 }
@@ -239,5 +261,6 @@ int main(int argc, char** argv) {
   }
   
   play(socket_fd);
+  close(socket_fd);
   return 0;
 }
