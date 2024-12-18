@@ -22,8 +22,8 @@ typedef struct hand {
 
 typedef struct player {
     int score; // how many games won
-    int Id; //player ID (aka client id)
-    int luck; //keeps track of advantages/disadvantages
+    int socket; //aka client id
+    int Id;  //player number
     hand_t phand; //the players hand
     bool stay;  // did the player stay or did they hit? Scheduler checks this, if TRUE, skip players turn
 } player_t;
