@@ -8,16 +8,16 @@
 #include "socket.h"
 #include "blackjack.h" 
 
+//variable to keep track of player and computer totals to print to user
 int playerTotal = 0;
-
 int computerTotal = 0;
 
+//Holds player and computer hands for ascii art
 char playerHand[6];
-
 char computerHand[6];
 
+//Keeps track of how many cards each player has
 int playerIndex = 0;
-
 int computerIndex = 0;
 
 // global variable for your advantage/disadvantage
@@ -26,10 +26,6 @@ int Cond;
 // blind = 1, you start without seeing your cards
 // doom = 2, you start with 3 cards
 
-/*
-Takes in the message from the server and converts it into two strings to be passed
-to the function that will draw the cards with ascii
-*/
 
 /*
 void global_init () {
@@ -42,10 +38,15 @@ computerIndex = 0;
 }
 */
 
+/*
+Takes in the message from the server and converts it into two strings to be passed
+to the function that will draw the cards with ascii
+*/
 void receive_card(bool player, char* card)
 {
   int cardInt = atoi(card);
   card_t drawnCard;
+  //converts index to digit and suit of card
   drawnCard.digit = index_to_digit(cardInt);
   drawnCard.suit = index_to_suit(cardInt);
   char suitStr[20];
@@ -74,10 +75,11 @@ void receive_card(bool player, char* card)
     computerIndex += 1;
   }
 
-  //printf("%d \n", index_to_digit(cardInt));
-  //editCard(suitStr, digitStr);
 }
 
+/*
+Helper function for editCard - to print out players ascii art for their cards
+*/
 void editCardHelper(bool player, char *buf, int index, int j, char p) {
     if ((buf[index] == p) && (player == true)) {
         buf[index] = playerHand[j];
@@ -87,6 +89,9 @@ void editCardHelper(bool player, char *buf, int index, int j, char p) {
     }
 }
 
+/*
+Helper function for editCard - to print out players ascii art for their cards
+*/
 void editCardHelper2(bool player, char *buf, int index, int j, char p, int playInd) {
     if ((playerIndex == playInd) && (buf[j] == p) && (player = true)) {
         buf[index] = playerHand[j];
@@ -95,7 +100,6 @@ void editCardHelper2(bool player, char *buf, int index, int j, char p, int playI
         buf[index] = computerHand[j];
       }
 }
-
 
 
 //updates and prints the player's hand
@@ -199,7 +203,7 @@ void updateBoard() {
 
 
 /*
-Receives a message from the server
+Receives a message with the card total from the server
 */
 char* client_receive(bool player, int socket_fd)
 { 
@@ -209,6 +213,7 @@ char* client_receive(bool player, int socket_fd)
         perror("Failed to read card from server");
         exit(EXIT_FAILURE);
       } 
+      //Converts card to int and adds to players total
       int temp = atoi(card);
       playerTotal += temp;
       return card;
@@ -218,6 +223,7 @@ char* client_receive(bool player, int socket_fd)
         perror("Failed to read card from server");
         exit(EXIT_FAILURE);
       } 
+      //Converts card to int and adds to computers total
       int temp = atoi(card);
       computerTotal += temp;
       return card;
@@ -225,17 +231,26 @@ char* client_receive(bool player, int socket_fd)
       
 }
 
+/*
+  Function that receives both a message and a card from the server
+*/
 char* client_receive_both(bool player, int socket_fd)
 { 
+  //receives a card first
    if (player) {
     char * card = receive_message(socket_fd);
       if (card == NULL) {
         perror("Failed to read card from server");
         exit(EXIT_FAILURE);
       } 
+      //converts the card to an integer and adds to the player's total
       int temp = atoi(card);
       playerTotal += temp;
       char * m = receive_message(socket_fd);
+       if (card == NULL) {
+        perror("Failed to read card from server");
+        exit(EXIT_FAILURE);
+       }
       printf("Total = %s \n", m);
     // print the received total
       return card;
@@ -249,15 +264,25 @@ char* client_receive_both(bool player, int socket_fd)
       int temp = atoi(card);
       computerTotal += temp;
       char * m = receive_message(socket_fd);
+       if (card == NULL) {
+        perror("Failed to read card from server");
+        exit(EXIT_FAILURE);
+       }
       printf("Total = %s \n", m);
     // print the received total
       return card;
    }
 }
 
+/*
+  Function called by client after connecting to server
+  Reads user input on whether to hit or stay and receives cards from the server, prints out
+  player total and cards for player to see.
+  Receives messages from the server whether the player has won or lost
+*/
 int play(int socket_fd) {
 
-// Receive the computer cards (sent first) //Read a message from the server
+// Receive the computer cards (sent first)
     char* first = client_receive(false, socket_fd);
     printf("first message: %s\n", first);
     char* second = client_receive(false, socket_fd);
@@ -275,8 +300,10 @@ int play(int socket_fd) {
     
     receive_card(true, (client_receive_both(true, socket_fd)));
     
+    //Printing statements to check if things are working properly
     printf("playtotal = %d \n", playerTotal);
     printf("comptotal = %d \n", computerTotal);
+    //Keep taking user input until the player has gone over 21
     while(playerTotal <= 21){
       printf("playtotal = %d \n", playerTotal);
       printf("comptotal = %d \n", computerTotal);
@@ -298,11 +325,8 @@ int play(int socket_fd) {
       }
 
       updateBoard();
-      // and then we want to receive a card from server
-      //char* m = client_receive(socket_fd);
-      //printf("%s", m);
-      // and then we want to receive a card from server and display in ascii
-      
+     
+      // and then we want to receive a card from server 
       char* update = client_receive(false, socket_fd);
       printf("Update_Hand branch print: %s \n", update);
       receive_card(true, (client_receive_both(true, socket_fd)));
@@ -315,20 +339,16 @@ int play(int socket_fd) {
     }
     //If the user is done
     else if (strcmp(userinput, "Stay\n") == 0) {
-      //printf("Got to stay part of client");
       //Tell the server we are staying
       int rc = send_message(socket_fd, userinput);
       if (rc == -1) {
         perror("Failed to send 'STAY' to server");
         exit(EXIT_FAILURE);
       }
-
-      // char* final = client_receive(socket_fd);
-      // printf("%s", final);
       break;
     }
+    //User does not enter Hit or Stay
     else {
-      //printf("invalid input \n");
       int rc = send_message(socket_fd, userinput);
       if (rc == -1) {
         perror("Failed to send invalid input to server");
@@ -336,41 +356,15 @@ int play(int socket_fd) {
       }
       continue;
     }
-    //  * Draw card -> strcmp(userinput, "draw\n") == 0
-    //  * Stay (relinquish control) -> strcmp(userinput, "stay\n") == 0
-    //  * total card count ( this might just be kept track of by server)
-    //  * 
-    //  */
-
-   
-  /*
-    if(strcmp(final, "You Won! :)") == 0){
-        break; // change this to updating count of wins +1
-    } else if (strcmp(final, "You have lost this game\n") == 0){
-        break; // change this to updating loss count +1
-    }
-    */
-
-    
-    // The message received from the server will be:
-    /**
-     * Card drawn (update your hand)
-     * Card drawn by others
-     *      Update the displ
-y to include a new card image     * Whether you've won or lost
-     * 
-     */
-
-    // Free the message
-    //free(message);
-    
   } // while  
   
   //computer is hitting
   while ((playerTotal < 21) && (computerTotal < 21) && (computerTotal < playerTotal)) {
+    //If the player has won by charlie rule, leave loop
     if(playerIndex == 5 && playerTotal <= 21) {
       break;
     }
+    //Receive computer cards so they can be displayed to user
     char* update = client_receive(false, socket_fd);
       printf("Update_Hand branch print: %s \n", update);
       receive_card(false, (client_receive(false, socket_fd)));
@@ -390,7 +384,10 @@ y to include a new card image     * Whether you've won or lost
   return 0;
 }
 
-
+/**
+  Function that displays story and gets user input, giving them advatages/disadvantages
+  based on choices.
+ */
 void story(int socket_fd){
   printf("\n Greetings traveler! I'm glad you could regaiin consciousness.\nIn case you're unaware, you're a 3rd year CompSci major at Grinnell. \n" 
   "a. *groggy* 'Uuuughhhghhhh my head hurts. Who are you... what happened?'\n\n"
